@@ -1,0 +1,17 @@
+{
+  "name": "美容台帳",
+  "short_name": "美容台帳",
+  "description": "美容の予約・費用・施術内容を記録するビューティ台帳",
+  "lang": "ja",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F3ECE2",
+  "theme_color": "#5E3A4C",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
