@@ -392,6 +392,18 @@ body {
 .backup-banner button { flex: 0 0 auto; border: none; background: linear-gradient(150deg, #C9A96E, #A9824F); color: #FFF8EC; font-family: var(--fm); font-size: 12.5px; padding: 8px 15px; border-radius: 999px; cursor: pointer; letter-spacing: .04em; }
 .backup-banner button:active { transform: scale(.96); }
 
+/* ============ 施術リスト（複数施術＋金額） ============ */
+.svc-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
+.svc-row .svc-name { flex: 1.6; min-width: 0; }
+.svc-row .svc-price { flex: 1; min-width: 0; }
+.svc-rm { width: 26px; height: 26px; flex: 0 0 auto; border-radius: 50%; border: none; background: var(--pill-2); color: var(--rose-deep); font-size: 15px; line-height: 1; cursor: pointer; }
+.svc-add { border: 1.5px dashed var(--rose); background: transparent; color: var(--rose-deep); font-family: var(--fm); font-size: 12.5px; border-radius: 999px; padding: 7px 14px; cursor: pointer; }
+.svc-total { text-align: right; font-size: 12.5px; color: var(--ink-2); margin-top: 8px; }
+.svc-total b { font-family: var(--fn); font-size: 19px; color: var(--rose-deep); font-weight: 600; margin-left: 6px; }
+.svc-breakdown { margin-top: 9px; padding-top: 9px; border-top: 1px dashed var(--hairline); }
+.svc-breakdown > div { display: flex; justify-content: space-between; gap: 10px; font-size: 12px; color: var(--ink-2); padding: 1px 0; }
+.svc-breakdown b { font-family: var(--fn); font-size: 13px; color: var(--ink); font-weight: 500; flex: 0 0 auto; }
+
 /* ============ 写真ピッカー ============ */
 .photo-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
 .photo-thumb-wrap { position: relative; width: 70px; height: 70px; }
@@ -808,8 +820,9 @@ function recCardHTML(r) {
         <div class="rec-treat">${esc(r.treatment) || cat.label}</div>
         <div class="rec-meta">
           <span>${CAL_MI} ${fmtDate(r.date)}${r.time ? ' ' + r.time : ''}</span>
-          <span>${YEN_MI} <b>${r.amount ? yen(r.amount) : '—'}</b></span>
+          <span>${YEN_MI} 合計 <b>${r.amount !== '' && r.amount != null ? yen(r.amount) : '—'}</b></span>
         </div>
+        ${(r.items && r.items.length > 1) ? `<div class="svc-breakdown">${r.items.map(it => `<div><span>${esc(it.name) || '—'}</span><b>${(it.price !== '' && it.price != null) ? yen(it.price) : '—'}</b></div>`).join('')}</div>` : ''}
         ${r.memo ? `<div class="rec-memo">${esc(r.memo)}</div>` : ''}
         ${r.photos && r.photos.length ? `<div class="rec-photos">${r.photos.map(p => `<img class="rec-thumb" src="${p}" alt="仕上がり写真">`).join('')}</div>` : ''}
       </div>
@@ -985,6 +998,55 @@ function openSheet(inner) { $('#sheet').innerHTML = `<div class="sheet-grab"></d
 function closeSheet() { $('#overlay').classList.remove('open'); }
 $('#overlay').addEventListener('click', e => { if (e.target.id === 'overlay') closeSheet(); });
 
+/* 複数施術＋金額のエディタ（合計を自動表示） */
+function itemsEditor(containerId, initial) {
+  let items = (initial && initial.length)
+    ? initial.map(i => ({ name: i.name || '', price: (i.price === '' || i.price == null) ? '' : Number(i.price) }))
+    : [{ name: '', price: '' }];
+  const el = document.getElementById(containerId);
+  const total = () => items.reduce((s, i) => s + (Number(i.price) || 0), 0);
+  function render() {
+    el.innerHTML = items.map((it, i) => `
+      <div class="svc-row">
+        <input type="text" class="svc-name" data-i="${i}" placeholder="施術内容（例：カット）" value="${esc(it.name)}">
+        <input type="number" class="svc-price" data-i="${i}" inputmode="numeric" placeholder="金額" value="${it.price === '' ? '' : esc(it.price)}">
+        <button type="button" class="svc-rm" data-rm="${i}" aria-label="削除" ${items.length <= 1 ? 'style="visibility:hidden"' : ''}>×</button>
+      </div>`).join('') +
+      `<button type="button" class="svc-add">＋ 施術を追加</button>
+       <div class="svc-total">合計<b>¥${yenNum(total())}</b></div>`;
+  }
+  el.addEventListener('input', e => {
+    const i = Number(e.target.dataset.i);
+    if (e.target.classList.contains('svc-name')) items[i].name = e.target.value;
+    if (e.target.classList.contains('svc-price')) {
+      items[i].price = e.target.value === '' ? '' : Number(e.target.value);
+      el.querySelector('.svc-total b').textContent = '¥' + yenNum(total());
+    }
+  });
+  el.addEventListener('click', e => {
+    if (e.target.closest('.svc-add')) { items.push({ name: '', price: '' }); render(); return; }
+    const rm = e.target.closest('.svc-rm');
+    if (rm) { items.splice(Number(rm.dataset.rm), 1); if (!items.length) items.push({ name: '', price: '' }); render(); }
+  });
+  render();
+  return {
+    get: () => items.filter(it => it.name.trim() !== '' || it.price !== ''),
+    total
+  };
+}
+/* recordの items から treatment / amount（合計）を作る */
+function itemsToFields(items) {
+  const treatment = items.map(i => i.name.trim()).filter(Boolean).join('＋');
+  const hasPrice = items.some(i => i.price !== '' && i.price != null);
+  const amount = hasPrice ? items.reduce((s, i) => s + (Number(i.price) || 0), 0) : '';
+  return { treatment, amount };
+}
+function recToItems(r) {
+  if (r.items && r.items.length) return r.items;
+  if (r.treatment || (r.amount !== '' && r.amount != null)) return [{ name: r.treatment || '', price: (r.amount === '' || r.amount == null) ? '' : r.amount }];
+  return [];
+}
+
 function catPickerHTML(selected) {
   return `<div class="cat-pick" id="catpick">` + CAT_KEYS.map(k =>
     `<div class="cat-chip ${k===selected?'on':''}" data-cat="${k}"><span class="ce">${svgIcon(k)}</span>${CATS[k].label}</div>`
@@ -1013,8 +1075,7 @@ function recordForm(rec, opts) {
     </div>
     <div class="field"><label>カテゴリ</label>${catPickerHTML(r.category)}</div>
     <div class="field two"><div><label>日付 *</label><input id="f-date" type="date" value="${esc(r.date)}"></div><div><label>時間</label><input id="f-time" type="time" value="${esc(r.time)}"></div></div>
-    <div class="field"><label>施術内容</label><input id="f-treat" type="text" placeholder="例：カット＋カラー" value="${esc(r.treatment)}"></div>
-    <div class="field"><label>金額（円）</label><input id="f-amount" type="number" inputmode="numeric" placeholder="例：12000" value="${r.amount!==''&&r.amount!=null?esc(r.amount):''}"></div>
+    <div class="field"><label>施術内容と金額（複数追加できます）</label><div id="svc-editor"></div></div>
     <div class="field"><label>ステータス</label><div class="status-pick" id="f-status"><button type="button" data-st="upcoming" class="${r.status==='upcoming'?'on':''}">これから</button><button type="button" data-st="done" class="${r.status==='done'?'on':''}">来店済み</button></div></div>
     <div class="field"><label>メモ（担当者・仕上がりなど）</label><textarea id="f-memo" placeholder="担当：○○さん / 前髪短め など">${esc(r.memo)}</textarea></div>
     <div class="field"><label>写真（仕上がり・デザインなど）</label><div class="photo-row" id="photo-row"></div><input type="file" id="photo-input" accept="image/*" style="display:none"><div class="hint">端末内に保存されます。タップで拡大できます。</div></div>
@@ -1023,6 +1084,7 @@ function recordForm(rec, opts) {
   `);
 
   let curCat = r.category, curStatus = r.status;
+  const svcEd = itemsEditor('svc-editor', recToItems(r));
   let curPhotos = (r.photos || []).slice();
   const photoRow = $('#photo-row');
   function renderPhotos() {
@@ -1077,7 +1139,9 @@ function recordForm(rec, opts) {
       store = r.store;  // サロン未登録の既存記録は元のお店名を維持
     }
     if (!store) { toast('サロンを選んでください'); return; }
-    const obj = { id: r.id || uid(), salonId, store, category: curCat, date, time: $('#f-time').value || '', treatment: $('#f-treat').value.trim(), amount: $('#f-amount').value === '' ? '' : Number($('#f-amount').value), status: curStatus, memo: $('#f-memo').value.trim(), photos: curPhotos };
+    const svcItems = svcEd.get();
+    const tf = itemsToFields(svcItems);
+    const obj = { id: r.id || uid(), salonId, store, category: curCat, date, time: $('#f-time').value || '', treatment: tf.treatment, amount: tf.amount, items: svcItems, status: curStatus, memo: $('#f-memo').value.trim(), photos: curPhotos };
     await idbPut('records', obj);
     const idx = records.findIndex(x => x.id === obj.id);
     if (idx >= 0) records[idx] = obj; else records.push(obj);
@@ -1196,16 +1260,19 @@ function completeSheet(rec) {
   openSheet(`
     <div class="sheet-title">来店を記録</div>
     <div class="sheet-sub">${esc(rec.store)}・${fmtDate(rec.date)}</div>
-    <div class="field"><label>金額（円）</label><input id="c-amount" type="number" inputmode="numeric" placeholder="例：12000" value="${rec.amount!==''&&rec.amount!=null?esc(rec.amount):''}"></div>
-    <div class="field"><label>施術内容</label><input id="c-treat" type="text" placeholder="例：カット＋カラー" value="${esc(rec.treatment)}"></div>
+    <div class="field"><label>施術内容と金額（複数追加できます）</label><div id="c-svc"></div></div>
     <div class="field"><label>メモ（仕上がり・担当など）</label><textarea id="c-memo" placeholder="担当：○○さん / 仕上がり◎">${esc(rec.memo)}</textarea></div>
     <button class="btn-primary" id="c-save">来店済みにする</button>
     <button class="btn-ghost" id="c-skip">金額を入れずに完了</button>
   `);
+  const cEd = itemsEditor('c-svc', recToItems(rec));
   async function finish(withInput) {
     if (withInput) {
-      rec.amount = $('#c-amount').value === '' ? '' : Number($('#c-amount').value);
-      rec.treatment = $('#c-treat').value.trim();
+      const svcItems = cEd.get();
+      const tf = itemsToFields(svcItems);
+      rec.items = svcItems;
+      rec.treatment = tf.treatment;
+      rec.amount = tf.amount;
       rec.memo = $('#c-memo').value.trim();
     }
     rec.status = 'done';
