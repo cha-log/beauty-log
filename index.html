@@ -53,7 +53,7 @@
 }
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 html { -webkit-text-size-adjust: 100%; }
-html, body { height: 100%; }
+html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
 body {
   font-family: var(--fm);
   color: var(--ink);
@@ -243,12 +243,17 @@ body {
 .cl-circle { width: 42px; height: 42px; border-radius: 50%; background: var(--pill-2); color: var(--rose-line); display: grid; place-items: center; }
 .cl-circle svg { width: 22px; height: 22px; }
 .cl-label { font-size: 8.5px; color: var(--ink-2); text-align: center; line-height: 1.25; letter-spacing: -.01em; }
+.cl-item { cursor: pointer; }
+.cl-item:active .cl-circle { transform: scale(.94); }
+.cl-item.on .cl-circle { background: var(--rose-deep); color: #FCEFEF; box-shadow: 0 4px 12px rgba(181,135,141,0.35); }
+.cl-item.on .cl-label { color: var(--rose-deep); font-weight: 600; }
+#cal-cat-list { margin-top: 4px; }
 
 .cal-legend2 { display: flex; justify-content: center; gap: 20px; margin-bottom: 14px; font-size: 11px; color: var(--ink-2); }
 .cal-legend2 span { display: inline-flex; align-items: center; gap: 6px; }
 .samp { width: 15px; height: 15px; border-radius: 5px; display: inline-block; }
 .samp.ring { background: transparent; border: 1.5px solid var(--rose); }
-.samp.fill { background: var(--rose); }
+.samp.fill { background: #EBD3D6; }
 
 .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
 .cal-dow { text-align: center; font-family: var(--fn); font-size: 12px; color: var(--ink-3); letter-spacing: .06em; padding-bottom: 4px; font-weight: 600; }
@@ -262,17 +267,20 @@ body {
 }
 .cal-cell.blank { background: transparent; box-shadow: none; cursor: default; }
 .cal-cell.upcoming { border-color: var(--rose); }
-.cal-cell.done { background: var(--rose); box-shadow: 0 4px 12px rgba(203,154,160,0.34); }
+.cal-cell.done { background: #EBD3D6; box-shadow: 0 3px 9px rgba(203,154,160,0.22); }
 .cal-cell.today { background: var(--rose-deep); box-shadow: 0 5px 14px rgba(181,135,141,0.4); }
 .cal-cell .dnum { font-family: var(--fn); font-size: 15px; color: var(--ink); font-weight: 500; line-height: 1.1; }
 .cal-cell.sun .dnum { color: var(--sun); }
 .cal-cell.sat .dnum { color: var(--sat); }
-.cal-cell.done .dnum, .cal-cell.today .dnum { color: #FCEFEF; font-weight: 600; }
+.cal-cell.done .dnum { color: var(--rose-deep); font-weight: 600; }
+.cal-cell.today .dnum { color: #FCEFEF; font-weight: 600; }
 .cal-marks { display: flex; align-items: center; justify-content: center; gap: 2px; margin-top: 3px; height: 15px; }
 .cal-mark { width: 13px; height: 13px; color: var(--rose-line); }
-.cal-cell.done .cal-mark, .cal-cell.today .cal-mark { color: #FCEFEF; }
+.cal-cell.done .cal-mark { color: var(--rose-deep); }
+.cal-cell.today .cal-mark { color: #FCEFEF; }
 .cal-more { font-family: var(--fn); font-size: 9px; color: var(--ink-3); }
-.cal-cell.done .cal-more, .cal-cell.today .cal-more { color: rgba(252,239,239,0.85); }
+.cal-cell.done .cal-more { color: var(--mauve); }
+.cal-cell.today .cal-more { color: rgba(252,239,239,0.85); }
 
 /* ============ 集計 ============ */
 .stat-hero { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
@@ -353,11 +361,12 @@ body {
 .field.two { display: flex; gap: 10px; }
 .field.two > div { flex: 1; }
 .field .hint { font-size: 11px; color: var(--ink-3); margin-top: 4px; }
-.cat-pick { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
-.cat-chip { border: 1px solid var(--hairline); background: var(--card); border-radius: 12px; padding: 9px 2px 7px; text-align: center; cursor: pointer; font-family: var(--fm); font-size: 9.5px; color: var(--ink-2); line-height: 1.3; }
-.cat-chip .ce { width: 22px; height: 22px; margin: 0 auto 3px; color: var(--rose-line); }
-.cat-chip.on { border-color: var(--rose); background: var(--pill-2); color: var(--rose-deep); font-weight: 600; }
-.cat-chip.on .ce { color: var(--rose-deep); }
+.cat-pick { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.cat-chip { border: none; background: transparent; padding: 0; text-align: center; cursor: pointer; font-size: 8.5px; color: var(--ink-2); line-height: 1.25; letter-spacing: -.01em; }
+.cat-chip .ce { width: 40px; height: 40px; border-radius: 50%; background: var(--card); border: 1px solid var(--hairline); color: var(--rose-line); display: grid; place-items: center; margin: 0 auto 4px; }
+.cat-chip .ce svg { width: 21px; height: 21px; }
+.cat-chip.on { color: var(--rose-deep); font-weight: 600; }
+.cat-chip.on .ce { background: var(--rose-deep); border-color: var(--rose-deep); color: #FCEFEF; }
 .status-pick { display: flex; gap: 10px; }
 .status-pick button { flex: 1; border: 1px solid var(--hairline); background: var(--card); border-radius: 12px; padding: 11px; font-family: var(--fm); font-size: 13.5px; color: var(--ink-2); cursor: pointer; }
 .status-pick button.on { border-color: var(--rose-deep); background: var(--rose-deep); color: #FCEFEF; }
@@ -439,6 +448,7 @@ body {
           <span><i class="samp fill"></i>塗り＝来店済み</span>
         </div>
         <div class="cal-grid" id="cal-grid"></div>
+        <div id="cal-cat-list"></div>
       </section>
 
       <!-- ========== 予約・記録 ========== -->
@@ -551,6 +561,7 @@ let records = [];
 let calYear, calMonth;
 let recFilter = 'all';
 let statsYear = new Date().getFullYear();
+let calCatFilter = null;   // カレンダーのカテゴリ絞り込み
 
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 const $ = s => document.querySelector(s);
@@ -720,7 +731,7 @@ function rowHTML(r) {
 function recordsOn(dstr) { return records.filter(r => r.date === dstr); }
 function renderCalendar() {
   $('#cat-legend').innerHTML = CAT_KEYS.map(k =>
-    `<div class="cl-item"><div class="cl-circle">${svgIcon(k)}</div><div class="cl-label">${CATS[k].label}</div></div>`
+    `<div class="cl-item ${k===calCatFilter?'on':''}" data-cat="${k}"><div class="cl-circle">${svgIcon(k)}</div><div class="cl-label">${CATS[k].label}</div></div>`
   ).join('');
 
   const first = new Date(calYear, calMonth, 1);
@@ -758,6 +769,16 @@ function renderCalendar() {
     </div>`;
   }
   $('#cal-grid').innerHTML = html;
+
+  // カテゴリ絞り込みの履歴リスト（凡例アイコンのタップで表示）
+  const listEl = $('#cal-cat-list');
+  if (calCatFilter) {
+    const recs = records.filter(r => r.category === calCatFilter).sort((a, b) => parseDT(b) - parseDT(a));
+    listEl.innerHTML = `<div class="section-h">${CATS[calCatFilter].label}の履歴（${recs.length}件）</div>` +
+      (recs.length ? recs.map(rowHTML).join('') : `<div class="empty-note">このカテゴリの記録はまだありません</div>`);
+  } else {
+    listEl.innerHTML = '';
+  }
 }
 
 /* ============================================================
@@ -973,14 +994,23 @@ function recordForm(rec, opts) {
   opts = opts || {};
   const editing = !!rec;
   const r = rec || { id: null, salonId: opts.salonId || '', store: opts.store || '', category: opts.category || 'hair', date: opts.date || todayStr(), time: '', treatment: '', amount: '', status: opts.status || 'upcoming', memo: '', photos: [] };
-  const salonOptions = `<option value="">— サロンを選ぶ / 自由入力 —</option>` +
-    salons.map(s => `<option value="${s.id}" ${s.id===r.salonId?'selected':''}>${esc(s.name)}（${CATS[s.category].label}）</option>`).join('');
+  const legacyStore = (editing && !r.salonId && r.store) ? r.store : '';
+  const salonOptions = `<option value="">${legacyStore ? esc(legacyStore) + '（サロン登録なし）' : '— サロンを選ぶ —'}</option>` +
+    salons.map(s => `<option value="${s.id}" ${s.id===r.salonId?'selected':''}>${esc(s.name)}（${CATS[s.category].label}）</option>`).join('') +
+    `<option value="__new__">＋ 新しいサロンを登録…</option>`;
 
   openSheet(`
     <div class="sheet-title">${editing ? '記録を編集' : '予約・記録を追加'}</div>
     <div class="sheet-sub">お店・日時・施術内容・金額を記録します</div>
-    <div class="field"><label>サロンから選ぶ</label><select id="f-salon">${salonOptions}</select><div class="hint">選ぶと店名・カテゴリが自動で入ります</div></div>
-    <div class="field"><label>お店 *</label><input id="f-store" type="text" placeholder="例：Salon de Plume" value="${esc(r.store)}"></div>
+    <div class="field"><label>サロン *</label><select id="f-salon">${salonOptions}</select><div class="hint">「＋ 新しいサロンを登録…」を選ぶと、その場で追加できます</div></div>
+    <div class="field" id="new-salon-fields" style="display:none">
+      <label>新しいサロン</label>
+      <input id="ns-name" type="text" placeholder="店名（必須）" style="margin-bottom:8px">
+      <input id="ns-phone" type="tel" inputmode="tel" placeholder="電話番号（任意）" style="margin-bottom:8px">
+      <input id="ns-url" type="url" inputmode="url" placeholder="予約サイトURL（任意）" style="margin-bottom:8px">
+      <input id="ns-memo" type="text" placeholder="メモ（任意）">
+      <div class="hint">保存時にサロン一覧へ自動追加され、この予約に紐づきます</div>
+    </div>
     <div class="field"><label>カテゴリ</label>${catPickerHTML(r.category)}</div>
     <div class="field two"><div><label>日付 *</label><input id="f-date" type="date" value="${esc(r.date)}"></div><div><label>時間</label><input id="f-time" type="time" value="${esc(r.time)}"></div></div>
     <div class="field"><label>施術内容</label><input id="f-treat" type="text" placeholder="例：カット＋カラー" value="${esc(r.treatment)}"></div>
@@ -1017,18 +1047,41 @@ function recordForm(rec, opts) {
   });
   $('#catpick').addEventListener('click', e => { const chip = e.target.closest('.cat-chip'); if (!chip) return; curCat = chip.dataset.cat; document.querySelectorAll('#catpick .cat-chip').forEach(c => c.classList.toggle('on', c.dataset.cat === curCat)); });
   $('#f-status').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; curStatus = b.dataset.st; document.querySelectorAll('#f-status button').forEach(x => x.classList.toggle('on', x.dataset.st === curStatus)); });
-  $('#f-salon').addEventListener('change', e => { const s = salons.find(x => x.id === e.target.value); if (s) { $('#f-store').value = s.name; curCat = s.category; document.querySelectorAll('#catpick .cat-chip').forEach(c => c.classList.toggle('on', c.dataset.cat === curCat)); } });
+  $('#f-salon').addEventListener('change', e => {
+    const v = e.target.value;
+    $('#new-salon-fields').style.display = (v === '__new__') ? '' : 'none';
+    if (v === '__new__') { $('#ns-name').focus(); return; }
+    const s = salons.find(x => x.id === v);
+    if (s) { curCat = s.category; document.querySelectorAll('#catpick .cat-chip').forEach(c => c.classList.toggle('on', c.dataset.cat === curCat)); }
+  });
   $('#f-cancel').addEventListener('click', closeSheet);
   $('#f-save').addEventListener('click', async () => {
-    const store = $('#f-store').value.trim();
     const date = $('#f-date').value;
-    if (!store) { toast('お店を入力してください'); return; }
     if (!date) { toast('日付を入力してください'); return; }
-    const obj = { id: r.id || uid(), salonId: $('#f-salon').value || '', store, category: curCat, date, time: $('#f-time').value || '', treatment: $('#f-treat').value.trim(), amount: $('#f-amount').value === '' ? '' : Number($('#f-amount').value), status: curStatus, memo: $('#f-memo').value.trim(), photos: curPhotos };
+    let salonId = $('#f-salon').value || '';
+    let store = '';
+    let createdSalon = false;
+    if (salonId === '__new__') {
+      const name = $('#ns-name').value.trim();
+      if (!name) { toast('新しいサロンの店名を入力してください'); return; }
+      const dup = salons.find(x => x.name.trim() === name);
+      if (dup) { salonId = dup.id; store = dup.name; }
+      else {
+        const ns = { id: uid(), name, category: curCat, phone: ($('#ns-phone').value || '').trim(), address: '', url: ($('#ns-url').value || '').trim(), memo: ($('#ns-memo').value || '').trim() };
+        await idbPut('salons', ns); salons.push(ns); salonId = ns.id; store = ns.name; createdSalon = true;
+      }
+    } else if (salonId) {
+      const s = salons.find(x => x.id === salonId);
+      store = s ? s.name : '';
+    } else if (r.store) {
+      store = r.store;  // サロン未登録の既存記録は元のお店名を維持
+    }
+    if (!store) { toast('サロンを選んでください'); return; }
+    const obj = { id: r.id || uid(), salonId, store, category: curCat, date, time: $('#f-time').value || '', treatment: $('#f-treat').value.trim(), amount: $('#f-amount').value === '' ? '' : Number($('#f-amount').value), status: curStatus, memo: $('#f-memo').value.trim(), photos: curPhotos };
     await idbPut('records', obj);
     const idx = records.findIndex(x => x.id === obj.id);
     if (idx >= 0) records[idx] = obj; else records.push(obj);
-    closeSheet(); toast(editing ? '保存しました' : '追加しました'); refreshCurrent();
+    closeSheet(); toast(createdSalon ? 'サロンも登録しました' : (editing ? '保存しました' : '追加しました')); refreshCurrent();
   });
 }
 
@@ -1180,6 +1233,11 @@ document.addEventListener('click', async e => {
 });
 
 $('#cal-grid').addEventListener('click', e => { const cell = e.target.closest('.cal-cell'); if (!cell || cell.classList.contains('blank')) return; dayDetail(cell.dataset.day); });
+$('#cat-legend').addEventListener('click', e => {
+  const it = e.target.closest('.cl-item'); if (!it) return;
+  calCatFilter = (calCatFilter === it.dataset.cat) ? null : it.dataset.cat;  // 同じアイコン再タップで解除
+  renderCalendar();
+});
 $('#cal-prev').addEventListener('click', () => { calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } renderCalendar(); });
 $('#cal-next').addEventListener('click', () => { calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } renderCalendar(); });
 $('#cal-today').addEventListener('click', () => { const d = new Date(); calYear = d.getFullYear(); calMonth = d.getMonth(); renderCalendar(); });
@@ -1206,7 +1264,22 @@ async function init() {
 init();
 
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  // 新バージョンが有効化されたら一度だけ自動リロード
+  let _reloading = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (_reloading) return; _reloading = true; window.location.reload();
+  });
+  window.addEventListener('load', async () => {
+    try {
+      const reg = await navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' });
+      const checkUpdate = () => { reg.update().catch(() => {}); };
+      // 開き直し・前面復帰・再フォーカスのたびに更新を確認
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkUpdate(); });
+      window.addEventListener('focus', checkUpdate);
+      window.addEventListener('pageshow', checkUpdate);
+      checkUpdate();
+    } catch (e) {}
+  });
 }
 </script>
 </body>
