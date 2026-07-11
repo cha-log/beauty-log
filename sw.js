@@ -1,5 +1,5 @@
 /* 美容台帳 Service Worker */
-var CACHE = 'biyou-daichou-v12';
+var CACHE = 'biyou-daichou-v13';
 var FONT_CACHE = 'biyou-daichou-fonts-v1';
 var ASSETS = [
   './',
