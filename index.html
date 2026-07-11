@@ -392,6 +392,20 @@ body {
 .backup-banner button { flex: 0 0 auto; border: none; background: linear-gradient(150deg, #C9A96E, #A9824F); color: #FFF8EC; font-family: var(--fm); font-size: 12.5px; padding: 8px 15px; border-radius: 999px; cursor: pointer; letter-spacing: .04em; }
 .backup-banner button:active { transform: scale(.96); }
 
+/* ============ 過ぎた予約の確認 ============ */
+.overdue-card { background: #F6E7EA; border: 1px solid #EBD3D8; border-radius: var(--r-sm); padding: 12px 14px 6px; margin-bottom: 14px; box-shadow: var(--shadow-sm); }
+.overdue-title { font-family: var(--fm); font-size: 13.5px; font-weight: 700; color: var(--rose-deep); letter-spacing: .03em; }
+.overdue-sub { font-size: 11px; color: var(--ink-2); margin-bottom: 3px; }
+.od-rows .od-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px dashed #E8CFD4; cursor: pointer; }
+.od-rows .od-row:first-child { border-top: none; }
+.od-main { flex: 1 1 auto; min-width: 0; }
+.od-store { font-family: var(--fm); font-size: 14px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.od-date { font-family: var(--fn); font-size: 13px; color: var(--rose-deep); }
+.od-btn { flex: 0 0 auto; border: none; background: var(--rose-deep); color: #FCEFEF; font-family: var(--fm); font-size: 12px; padding: 8px 13px; border-radius: 999px; cursor: pointer; }
+.od-btn:active { transform: scale(.96); }
+.salon-top { cursor: pointer; }
+.salon-top:active { opacity: .75; }
+
 /* ============ 施術リスト（複数施術＋金額） ============ */
 .svc-row { display: flex; gap: 8px; margin-bottom: 8px; align-items: center; }
 .svc-row .svc-name { flex: 1.6; min-width: 0; }
@@ -440,6 +454,7 @@ body {
         <div id="home-next"></div>
         <div class="summary-row" id="home-summary"></div>
         <div id="home-backup"></div>
+        <div id="home-overdue"></div>
         <div id="home-upcoming"></div>
         <div id="home-recent"></div>
       </section>
@@ -589,6 +604,8 @@ function parseDT(rec) { const t = rec.time && /^\d{2}:\d{2}$/.test(rec.time) ? r
 const WEEK_JP = ['日','月','火','水','木','金','土'];
 function fmtDate(dstr) { const d = new Date(dstr + 'T00:00:00'); return `${d.getMonth()+1}月${d.getDate()}日（${WEEK_JP[d.getDay()]}）`; }
 function fmtDateShort(dstr) { const d = new Date(dstr + 'T00:00:00'); return `${d.getMonth()+1}/${d.getDate()}`; }
+function fmtDateY(dstr) { const d = new Date(dstr + 'T00:00:00'); return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${WEEK_JP[d.getDay()]}）`; }
+function daysAgoTxt(dstr) { const d = Math.floor((Date.now() - new Date(dstr + 'T00:00:00')) / 86400000); return d <= 0 ? '今日' : `${d}日前`; }
 function yen(n) { return '¥' + (Number(n)||0).toLocaleString('ja-JP'); }
 function yenNum(n) { return (Number(n)||0).toLocaleString('ja-JP'); }
 
@@ -715,6 +732,23 @@ function renderHome() {
 
   renderBackupBanner();
 
+  // 過ぎた「これから」予約の確認（記録漏れ防止）
+  const today0 = new Date(todayStr() + 'T00:00:00');
+  const overdue = records.filter(r => r.status === 'upcoming' && parseDT(r) < today0).sort((a, b) => parseDT(b) - parseDT(a));
+  $('#home-overdue').innerHTML = overdue.length ? `
+    <div class="overdue-card">
+      <div class="overdue-title">来店しましたか？</div>
+      <div class="overdue-sub">日付が過ぎた予約があります。記録すると集計に反映されます</div>
+      <div class="od-rows">${overdue.map(r => `
+        <div class="od-row" data-open-rec="${r.id}">
+          <div class="od-main">
+            <div class="od-store">${esc(r.store)}</div>
+            <div class="od-date">${fmtDate(r.date)}${r.time ? ' ' + r.time : ''}</div>
+          </div>
+          <button class="od-btn" data-done="${r.id}">来店を記録</button>
+        </div>`).join('')}</div>
+    </div>` : '';
+
   const upcoming = records.filter(r => r.status === 'upcoming').sort((a,b) => parseDT(a) - parseDT(b)).slice(0, 5);
   $('#home-upcoming').innerHTML = `<div class="section-h">これからの予約</div>` +
     (upcoming.length ? upcoming.map(rowHTML).join('') : `<div class="empty-note">予約はまだありません</div>`);
@@ -836,7 +870,7 @@ function recCardHTML(r) {
       </div>
     </div>
     <div class="rec-actions">
-      ${done ? '' : `<button class="primary" data-done="${r.id}">来店済みにする</button>`}
+      ${done ? `<button class="primary" data-rebook="${r.id}">もう一度予約</button>` : `<button class="primary" data-done="${r.id}">来店済みにする</button>`}
       <button data-edit-rec="${r.id}">編集</button>
       <button class="danger" data-del-rec="${r.id}">削除</button>
     </div>
@@ -868,15 +902,17 @@ function renderSalons() {
     if (s.address) info += `<span>${PIN_MI}${esc(s.address)}</span>`;
     if (s.url) info += `<a href="${esc(s.url)}" target="_blank" rel="noopener">${LINK_MI}予約サイトを開く</a>`;
     if (s.memo) info += `<span>${NOTE_MI}${esc(s.memo)}</span>`;
+    const lastDone = records.filter(r => r.salonId === s.id && r.status === 'done').sort((a, b) => parseDT(b) - parseDT(a))[0];
     return `<div class="salon-card">
-      <div class="salon-top">
+      <div class="salon-top" data-salon-hist="${s.id}">
         <div class="salon-emoji">${svgIcon(s.category)}</div>
         <div class="salon-body">
           <div class="salon-name">${esc(s.name)}</div>
-          <div class="salon-cat">${cat.label}</div>
+          <div class="salon-cat">${cat.label}　<span style="color:var(--ink-3)">タップで履歴</span></div>
           <div class="salon-stats">
             <div><b>${st.visits}</b>来店回数</div>
             <div><b>${yen(st.total)}</b>累計支出</div>
+            <div><b>${lastDone ? daysAgoTxt(lastDone.date) : '—'}</b>前回来店</div>
           </div>
         </div>
       </div>
@@ -1063,7 +1099,7 @@ function catPickerHTML(selected) {
 function recordForm(rec, opts) {
   opts = opts || {};
   const editing = !!rec;
-  const r = rec || { id: null, salonId: opts.salonId || '', store: opts.store || '', category: opts.category || 'hair', date: opts.date || todayStr(), time: '', treatment: '', amount: '', status: opts.status || 'upcoming', memo: '', photos: [] };
+  const r = rec || { id: null, salonId: opts.salonId || '', store: opts.store || '', category: opts.category || 'hair', date: opts.date || todayStr(), time: '', treatment: '', amount: '', items: (opts.items || []).map(i => ({ name: i.name || '', price: i.price })), status: opts.status || 'upcoming', memo: '', photos: [] };
   const legacyStore = (editing && !r.salonId && r.store) ? r.store : '';
   const salonOptions = `<option value="">${legacyStore ? esc(legacyStore) + '（サロン登録なし）' : '— サロンを選ぶ —'}</option>` +
     salons.map(s => `<option value="${s.id}" ${s.id===r.salonId?'selected':''}>${esc(s.name)}（${CATS[s.category].label}）</option>`).join('') +
@@ -1086,35 +1122,12 @@ function recordForm(rec, opts) {
     <div class="field"><label>施術内容と金額（複数追加できます）</label><div id="svc-editor"></div></div>
     <div class="field"><label>ステータス</label><div class="status-pick" id="f-status"><button type="button" data-st="upcoming" class="${r.status==='upcoming'?'on':''}">これから</button><button type="button" data-st="done" class="${r.status==='done'?'on':''}">来店済み</button></div></div>
     <div class="field"><label>メモ（担当者・仕上がりなど）</label><textarea id="f-memo" placeholder="担当：○○さん / 前髪短め など">${esc(r.memo)}</textarea></div>
-    <div class="field"><label>写真（仕上がり・デザインなど）</label><div class="photo-row" id="photo-row"></div><input type="file" id="photo-input" accept="image/*" style="display:none"><div class="hint">端末内に保存されます。タップで拡大できます。</div></div>
     <button class="btn-primary" id="f-save">${editing ? '保存する' : '追加する'}</button>
     <button class="btn-ghost" id="f-cancel">${editing ? 'キャンセル' : 'やめる'}</button>
   `);
 
   let curCat = r.category, curStatus = r.status;
   const svcEd = itemsEditor('svc-editor', recToItems(r));
-  let curPhotos = (r.photos || []).slice();
-  const photoRow = $('#photo-row');
-  function renderPhotos() {
-    photoRow.innerHTML = curPhotos.map((p, i) =>
-      `<div class="photo-thumb-wrap"><img class="photo-thumb" src="${p}" data-view="${i}" alt="写真"><button type="button" class="photo-rm" data-rm="${i}" aria-label="削除">×</button></div>`
-    ).join('') + `<button type="button" class="photo-add" id="photo-add"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5.5" width="17" height="14" rx="2.5"/><circle cx="9" cy="10.5" r="1.6"/><path d="M4 17l4.5-4 3.5 3 3-2.5 5 4.5"/></svg>追加</button>`;
-  }
-  renderPhotos();
-  photoRow.addEventListener('click', async e => {
-    const add = e.target.closest('#photo-add');
-    if (add) { $('#photo-input').click(); return; }
-    const rm = e.target.closest('[data-rm]');
-    if (rm) { curPhotos.splice(Number(rm.dataset.rm), 1); renderPhotos(); return; }
-    const view = e.target.closest('[data-view]');
-    if (view) { openPhoto(curPhotos[Number(view.dataset.view)]); }
-  });
-  $('#photo-input').addEventListener('change', async e => {
-    const file = e.target.files[0]; if (!file) return;
-    try { const data = await downscaleImage(file); curPhotos.push(data); renderPhotos(); }
-    catch (err) { toast('画像を読み込めませんでした'); }
-    e.target.value = '';
-  });
   $('#catpick').addEventListener('click', e => { const chip = e.target.closest('.cat-chip'); if (!chip) return; curCat = chip.dataset.cat; document.querySelectorAll('#catpick .cat-chip').forEach(c => c.classList.toggle('on', c.dataset.cat === curCat)); });
   $('#f-status').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; curStatus = b.dataset.st; document.querySelectorAll('#f-status button').forEach(x => x.classList.toggle('on', x.dataset.st === curStatus)); });
   $('#f-salon').addEventListener('change', e => {
@@ -1149,7 +1162,7 @@ function recordForm(rec, opts) {
     if (!store) { toast('サロンを選んでください'); return; }
     const svcItems = svcEd.get();
     const tf = itemsToFields(svcItems);
-    const obj = { id: r.id || uid(), salonId, store, category: curCat, date, time: $('#f-time').value || '', treatment: tf.treatment, amount: tf.amount, items: svcItems, status: curStatus, memo: $('#f-memo').value.trim(), photos: curPhotos };
+    const obj = { id: r.id || uid(), salonId, store, category: curCat, date, time: $('#f-time').value || '', treatment: tf.treatment, amount: tf.amount, items: svcItems, status: curStatus, memo: $('#f-memo').value.trim(), photos: r.photos || [] };
     await idbPut('records', obj);
     const idx = records.findIndex(x => x.id === obj.id);
     if (idx >= 0) records[idx] = obj; else records.push(obj);
@@ -1211,6 +1224,40 @@ function dayDetail(dstr) {
   `);
   $('#d-close').addEventListener('click', closeSheet);
   $('#d-add').addEventListener('click', () => recordForm(null, { date: dstr }));
+  $('#sheet').querySelectorAll('[data-open-rec]').forEach(el => { el.addEventListener('click', () => { const rec = records.find(r => r.id === el.dataset.openRec); if (rec) recordForm(rec); }); });
+}
+
+/* ---------- サロンの来店履歴（全日付） ---------- */
+function salonHistory(id) {
+  const s = salons.find(x => x.id === id); if (!s) return;
+  const recs = records.filter(r => r.salonId === id).sort((a, b) => parseDT(b) - parseDT(a));
+  const doneRecs = recs.filter(r => r.status === 'done');
+  const total = doneRecs.reduce((t, r) => t + (Number(r.amount) || 0), 0);
+  let subParts = [`来店 ${doneRecs.length}回`, `累計 ${yen(total)}`];
+  if (doneRecs.length) {
+    const d = Math.floor((Date.now() - new Date(doneRecs[0].date + 'T00:00:00')) / 86400000);
+    subParts.push(d <= 0 ? '今日来店' : `前回来店から${d}日`);
+  }
+  const items = recs.length ? recs.map(r => {
+    const done = r.status === 'done';
+    const cat = CATS[r.category] || CATS.other;
+    return `<div class="day-rec" data-open-rec="${r.id}">
+      <div class="stamp ${done ? 'done' : ''}">${svgIcon(r.category)}</div>
+      <div class="row-main">
+        <div class="row-store">${fmtDateY(r.date)} <span class="badge ${done ? 'done' : 'up'}">${done ? '来店済み' : 'これから'}</span></div>
+        <div class="row-sub">${esc(r.treatment) || cat.label}${(r.amount !== '' && r.amount != null) ? ' ・ ' + yen(r.amount) : ''}</div>
+      </div>
+    </div>`;
+  }).join('') : `<div class="empty-note">このサロンの記録はまだありません</div>`;
+  openSheet(`
+    <div class="sheet-title">${esc(s.name)}</div>
+    <div class="sheet-sub">${subParts.join(' ・ ')}</div>
+    ${items}
+    <button class="btn-primary" id="sh-book">＋ このサロンで予約</button>
+    <button class="btn-ghost" id="sh-close">閉じる</button>
+  `);
+  $('#sh-close').addEventListener('click', closeSheet);
+  $('#sh-book').addEventListener('click', () => recordForm(null, { salonId: s.id, store: s.name, category: s.category }));
   $('#sheet').querySelectorAll('[data-open-rec]').forEach(el => { el.addEventListener('click', () => { const rec = records.find(r => r.id === el.dataset.openRec); if (rec) recordForm(rec); }); });
 }
 
@@ -1297,9 +1344,16 @@ function completeSheet(rec) {
 document.addEventListener('click', async e => {
   const t = e.target;
   if (t.classList && t.classList.contains('rec-thumb')) { openPhoto(t.src); return; }
+  if (t.dataset.done) { const rec = records.find(r => r.id === t.dataset.done); if (rec) completeSheet(rec); return; }
+  if (t.dataset.rebook) {
+    const rec = records.find(r => r.id === t.dataset.rebook);
+    if (rec) recordForm(null, { salonId: rec.salonId, store: rec.store, category: rec.category, items: recToItems(rec), date: todayStr() });
+    return;
+  }
+  const hist = t.closest('[data-salon-hist]');
+  if (hist && !t.closest('.sheet')) { salonHistory(hist.dataset.salonHist); return; }
   const openRec = t.closest('[data-open-rec]');
   if (openRec && !t.closest('.sheet')) { const rec = records.find(r => r.id === openRec.dataset.openRec); if (rec) recordForm(rec); return; }
-  if (t.dataset.done) { const rec = records.find(r => r.id === t.dataset.done); if (rec) completeSheet(rec); return; }
   if (t.dataset.editRec) { const rec = records.find(r => r.id === t.dataset.editRec); if (rec) recordForm(rec); return; }
   if (t.dataset.delRec) { if (confirm('この記録を削除しますか？')) { await idbDel('records', t.dataset.delRec); records = records.filter(r => r.id !== t.dataset.delRec); toast('削除しました'); refreshCurrent(); } return; }
   if (t.dataset.editSalon) { const s = salons.find(x => x.id === t.dataset.editSalon); if (s) salonForm(s); return; }
@@ -1313,6 +1367,23 @@ $('#cat-legend').addEventListener('click', e => {
   calCatFilter = (calCatFilter === it.dataset.cat) ? null : it.dataset.cat;  // 同じアイコン再タップで解除
   renderCalendar();
 });
+
+// カレンダーの左右スワイプで前後の月へ
+(function () {
+  const el = $('#tab-cal');
+  let sx = 0, sy = 0, tracking = false;
+  el.addEventListener('touchstart', e => { const t = e.touches[0]; sx = t.clientX; sy = t.clientY; tracking = true; }, { passive: true });
+  el.addEventListener('touchend', e => {
+    if (!tracking) return; tracking = false;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - sx, dy = t.clientY - sy;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      if (dx < 0) { calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } }
+      else { calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } }
+      renderCalendar();
+    }
+  }, { passive: true });
+})();
 $('#cal-prev').addEventListener('click', () => { calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } renderCalendar(); });
 $('#cal-next').addEventListener('click', () => { calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } renderCalendar(); });
 $('#cal-today').addEventListener('click', () => { const d = new Date(); calYear = d.getFullYear(); calMonth = d.getMonth(); renderCalendar(); });
