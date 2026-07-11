@@ -471,6 +471,7 @@ body {
           <button data-f="done">来店済み</button>
           <button data-f="all" class="on">すべて</button>
         </div>
+        <div class="cat-legend" id="rec-cat-legend" style="margin-bottom:14px"></div>
         <div id="rec-list"></div>
       </section>
 
@@ -574,6 +575,7 @@ let calYear, calMonth;
 let recFilter = 'all';
 let statsYear = new Date().getFullYear();
 let calCatFilter = null;   // カレンダーのカテゴリ絞り込み
+let recCatFilter = null;   // 記録タブのカテゴリ絞り込み
 
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 const $ = s => document.querySelector(s);
@@ -798,11 +800,17 @@ function renderCalendar() {
 ============================================================ */
 function renderRecords() {
   document.querySelectorAll('#rec-seg button').forEach(b => b.classList.toggle('on', b.dataset.f === recFilter));
+  // カテゴリアイコンの絞り込み（タップで選択、再タップで解除）
+  $('#rec-cat-legend').innerHTML = CAT_KEYS.map(k =>
+    `<div class="cl-item ${k===recCatFilter?'on':''}" data-cat="${k}"><div class="cl-circle">${svgIcon(k)}</div><div class="cl-label">${CATS[k].label}</div></div>`
+  ).join('');
   let list = records.slice();
   if (recFilter === 'upcoming') list = list.filter(r => r.status === 'upcoming');
   else if (recFilter === 'done') list = list.filter(r => r.status === 'done');
+  if (recCatFilter) list = list.filter(r => r.category === recCatFilter);
   list.sort((a, b) => recFilter === 'upcoming' ? parseDT(a) - parseDT(b) : parseDT(b) - parseDT(a));
-  $('#rec-list').innerHTML = list.length ? list.map(recCardHTML).join('') : `<div class="empty-note">記録がありません。<br>＋ボタンから追加してください。</div>`;
+  const head = recCatFilter ? `<div class="section-h">${CATS[recCatFilter].label}の履歴（${list.length}件）</div>` : '';
+  $('#rec-list').innerHTML = head + (list.length ? list.map(recCardHTML).join('') : `<div class="empty-note">${recCatFilter ? 'このカテゴリの記録はありません' : '記録がありません。<br>＋ボタンから追加してください。'}</div>`);
 }
 const CAL_MI = '<svg class="ico mi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><line x1="3.5" y1="9.5" x2="20.5" y2="9.5"/><line x1="8" y1="3" x2="8" y2="6.5"/><line x1="16" y1="3" x2="16" y2="6.5"/></svg>';
 const YEN_MI = '<svg class="ico mi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l4 7h-8z"/><line x1="12" y1="11" x2="12" y2="20"/><line x1="8.5" y1="14.5" x2="15.5" y2="14.5"/><line x1="8.5" y1="17.5" x2="15.5" y2="17.5"/></svg>';
@@ -1309,6 +1317,11 @@ $('#cal-prev').addEventListener('click', () => { calMonth--; if (calMonth < 0) {
 $('#cal-next').addEventListener('click', () => { calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } renderCalendar(); });
 $('#cal-today').addEventListener('click', () => { const d = new Date(); calYear = d.getFullYear(); calMonth = d.getMonth(); renderCalendar(); });
 $('#rec-seg').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; recFilter = b.dataset.f; renderRecords(); });
+$('#rec-cat-legend').addEventListener('click', e => {
+  const it = e.target.closest('.cl-item'); if (!it) return;
+  recCatFilter = (recCatFilter === it.dataset.cat) ? null : it.dataset.cat;  // 再タップで解除
+  renderRecords();
+});
 $('#fab').addEventListener('click', () => { const active = document.querySelector('.panel.active').id; if (active === 'tab-salon') salonForm(null); else recordForm(null); });
 $('#tb-more').addEventListener('click', settingsSheet);
 $('#tb-menu').addEventListener('click', settingsSheet);
