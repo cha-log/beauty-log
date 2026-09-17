@@ -1406,19 +1406,29 @@ async function init() {
 init();
 
 if ('serviceWorker' in navigator) {
-  // 新バージョンが有効化されたら一度だけ自動リロード
+  // 新バージョンが有効化されたら自動リロード（ただしループ防止のガード付き）
+  const RELOAD_KEY = 'biyou_lastAutoReload';
+  const hadController = !!navigator.serviceWorker.controller;  // 初回インストール時はリロード不要
   let _reloading = false;
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (_reloading) return; _reloading = true; window.location.reload();
+    if (_reloading || !hadController) return;
+    let last = 0; try { last = Number(sessionStorage.getItem(RELOAD_KEY) || 0); } catch (e) {}
+    if (Date.now() - last < 120000) return;  // 2分以内の再リロードは抑止（配信のブレによるループ防止）
+    try { sessionStorage.setItem(RELOAD_KEY, String(Date.now())); } catch (e) {}
+    _reloading = true; window.location.reload();
   });
   window.addEventListener('load', async () => {
     try {
       const reg = await navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' });
-      const checkUpdate = () => { reg.update().catch(() => {}); };
-      // 開き直し・前面復帰・再フォーカスのたびに更新を確認
+      let lastCheck = 0;
+      const checkUpdate = () => {
+        const now = Date.now();
+        if (now - lastCheck < 60000) return;  // 更新チェックは1分に1回まで
+        lastCheck = now;
+        reg.update().catch(() => {});
+      };
+      // アプリを開き直した（前面に戻った）ときだけ更新を確認。タップ等では走らない
       document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') checkUpdate(); });
-      window.addEventListener('focus', checkUpdate);
-      window.addEventListener('pageshow', checkUpdate);
       checkUpdate();
     } catch (e) {}
   });
